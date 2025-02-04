@@ -126,10 +126,13 @@ export const removeEmptyParagraphs = (html: string) => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     const paragraphs = tempDiv.querySelectorAll('p');
-
     paragraphs.forEach(paragraph => {
         if (!paragraph.textContent || paragraph.textContent.trim() === '') {
-            paragraph.remove();
+            //In the case of `<p><img src="src"/></p>`, the text content is empty but should not be cleared
+            if (!paragraph.querySelector("img")) {
+                paragraph.remove();
+            }
+
         }
     });
 
@@ -160,6 +163,41 @@ export const organizeHTMLContent = (originalHtml: string) => {
     if (!originalHtml) return "";
     const parser = new DOMParser();
     const doc = parser.parseFromString(originalHtml, 'text/html');
+
+    //change github style task list items to taskList
+    const ulList = doc.querySelectorAll("ul");
+    if (ulList) {
+        ulList.forEach(ul => {
+            if (ul.getAttribute("class")?.includes("task-list")) {
+                ul.getAttributeNames().forEach(attr => {
+                    ul.removeAttribute(attr)
+                })
+                ul.setAttribute("data-type", "taskList")
+
+                const liOrP = ul.firstElementChild;
+                if (liOrP?.tagName === "P") {
+                    const fragment = document.createDocumentFragment();
+                    liOrP.childNodes.forEach(node => {
+                        fragment.append(node.cloneNode(true))
+                    })
+                    liOrP.replaceWith(fragment)
+                }
+
+                const liList = ul.querySelectorAll("li");
+                liList.forEach(li => {
+                    li.getAttributeNames().forEach(attr => {
+                        ul.removeAttribute(attr)
+                    })
+                    const checkbox = li.querySelector("input[type='checkbox']");
+                    if (checkbox) {
+                        li.setAttribute("data-type", "taskItem")
+                        li.setAttribute("data-checked", checkbox.hasAttribute("checked") ? "true" : "false")
+                        // li.removeChild(checkbox)
+                    }
+                })
+            }
+        })
+    }
 
 
     //"tiptap" does not support empty list items. Here to fill in the gaps
