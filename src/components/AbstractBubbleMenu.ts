@@ -1,9 +1,9 @@
-import {AiEditorOptions, AiEditorEventListener, InnerEditor} from "../core/AiEditor.ts";
-import {Editor, EditorEvents} from "@tiptap/core";
-import tippy, {Instance} from "tippy.js";
-import {BubbleMenuItem} from "./bubbles/types.ts";
-import {MenuRecord} from "./bubbles/items/MenuRecord.ts";
-import {t} from "i18next";
+import { Editor, EditorEvents } from "@tiptap/core";
+import { t } from "i18next";
+import tippy, { Instance } from "tippy.js";
+import { AiEditorEventListener, AiEditorOptions, InnerEditor } from "../core/AiEditor.ts";
+import { MenuRecord } from "./bubbles/items/MenuRecord.ts";
+import { BubbleMenuItem } from "./bubbles/types.ts";
 
 
 export abstract class AbstractBubbleMenu extends HTMLElement implements AiEditorEventListener {
@@ -49,6 +49,10 @@ export abstract class AbstractBubbleMenu extends HTMLElement implements AiEditor
         }
 
         this.querySelector("div")!.addEventListener("click", (e) => {
+            // Prevent default browser action
+            e.preventDefault();
+            e.stopPropagation();
+            
             this.items.forEach((item) => {
                 const target = (e.target as any).closest(`#${item.id}`);
                 if (target) {

@@ -1,4 +1,4 @@
-import {defineConfig} from 'vitepress'
+import { defineConfig } from 'vitepress';
 
 const gitee_icon_svg = '\n' +
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -127,6 +127,8 @@ export default defineConfig({
                         text: 'AI 配置',
                         items: [
                             {text: 'AI 配置', link: '/zh/ai/base'},
+                            {text: 'API 密钥管理', link: '/zh/ai/api-key-management'},
+                            {text: 'AI 模型选择', link: '/zh/ai/model-selection'},
                             {text: 'AI 菜单', link: '/zh/ai/menu'},
                             {text: 'AI 命令', link: '/zh/ai/command'},
                             {text: 'AI 翻译', link: '/zh/ai/translate'},
@@ -218,13 +220,15 @@ export default defineConfig({
                 text: 'AI',
                 items: [
                     {text: 'AI Configuration', link: '/ai/base'},
-                    {text: 'AI Menus', link: '/ai/menu'},
+                    {text: 'API Key Management', link: '/ai/api-key-management'},
+                    {text: 'AI Model Selection', link: '/ai/model-selection'},
+                    {text: 'AI Menu', link: '/ai/menu'},
                     {text: 'AI Commands', link: '/ai/command'},
-                    {text: 'AI Translate', link: '/ai/translate'},
+                    {text: 'AI Translation', link: '/ai/translate'},
                     {text: 'AI Chat 💪', link: '/ai/chat'},
                     {text: 'AI CodeBlock', link: '/ai/codeblock'},
-                    {text: 'AI Prompt', link: '/ai/prompt'},
-                    {text: 'LLMs', link: '/ai/llm'},
+                    {text: 'AI Prompts', link: '/ai/prompt'},
+                    {text: 'LLM Models', link: '/ai/llm'},
                 ]
             },
             {

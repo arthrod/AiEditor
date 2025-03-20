@@ -1,13 +1,14 @@
-import {AiEditorOptions, AiEditorEventListener, InnerEditor} from "../core/AiEditor.ts";
-import {Editor, EditorEvents} from "@tiptap/core";
+import { Editor, EditorEvents } from "@tiptap/core";
+import { AiEditorEventListener, AiEditorOptions, InnerEditor } from "../core/AiEditor.ts";
 // @ts-ignore
-import {ChainedCommands} from "@tiptap/core/dist/packages/core/src/types";
+import { ChainedCommands } from "@tiptap/core/dist/packages/core/src/types";
 
 export class AbstractMenuButton extends HTMLElement implements AiEditorEventListener {
 
     template: string = '';
     editor?: InnerEditor;
     options?: AiEditorOptions;
+    alwaysEnabledButtons: string[] = ['fullscreen','printer'];
 
     protected constructor() {
         super();
@@ -22,7 +23,15 @@ export class AbstractMenuButton extends HTMLElement implements AiEditorEventList
     }
 
     connectedCallback() {
-        this.innerHTML = this.template;
+        // Set the template content
+        if (this.template && this.innerHTML === '') {
+            this.innerHTML = this.template;
+        }
+        
+        // If editor is already available, ensure we're properly initialized
+        if (this.editor && typeof this.onEditableChange === 'function') {
+            this.onEditableChange(!!this.options?.editable);
+        }
     }
 
     // @ts-ignore
@@ -33,6 +42,9 @@ export class AbstractMenuButton extends HTMLElement implements AiEditorEventList
     onCreate(props: EditorEvents["create"], options: AiEditorOptions): void {
         this.editor = props.editor as InnerEditor;
         this.options = options;
+        this.alwaysEnabledButtons = Array.from(
+            new Set(this.alwaysEnabledButtons.concat(options.alwaysEnabledToolbarKeys || []))
+        );
     }
 
     onTransaction(event: EditorEvents["transaction"]): void {
@@ -51,6 +63,15 @@ export class AbstractMenuButton extends HTMLElement implements AiEditorEventList
     }
 
     onEditableChange(editable: boolean) {
+        // for these menu buttons should be enabled even-if editor is NOT editable
+        let toolbarKey = this.tagName.slice(/*aie-*/4).toLocaleLowerCase();
+        if (toolbarKey === "custom") {
+            toolbarKey = this.getAttribute('id') || '';
+        }
+        if (this.alwaysEnabledButtons.includes(toolbarKey)) {
+            return;
+        }
+        
         if (!editable) {
             this.style.pointerEvents = "none"; // 禁用点击事件
             this.style.opacity = "0.5"; // 改变透明度

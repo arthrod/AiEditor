@@ -1,5 +1,5 @@
-import {AbstractMenuButton} from "../AbstractMenuButton.ts";
-import {CustomMenu, InnerEditor} from "../../core/AiEditor.ts";
+import { CustomMenu, InnerEditor } from "../../core/AiEditor.ts";
+import { AbstractMenuButton } from "../AbstractMenuButton.ts";
 
 export class Custom extends AbstractMenuButton {
 
