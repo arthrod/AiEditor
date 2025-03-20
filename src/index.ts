@@ -1,4 +1,3 @@
-export * from './core/AiEditor.ts';
 export * from './ai/AiGlobalConfig.ts';
 export * from './ai/AiModelFactory.ts';
 export * from './ai/AiModelManager.ts';
@@ -15,3 +14,7 @@ export * from './ai/spark/SparkAiModelConfig.ts';
 export * from './ai/wenxin/WenXinAiModel.ts';
 export * from './ai/wenxin/WenXinAiModelConfig.ts';
 export * from './components/bubbles/types.ts';
+export * from './core/AiEditor.ts';
+// Import our new components registration
+import "./components/registerCustomElements.ts";
+

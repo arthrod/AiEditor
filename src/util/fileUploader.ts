@@ -10,9 +10,34 @@ export const fileUploader: Uploader = (file: File, uploadUrl: string, headers: R
             body: formData,
         }).then((resp) => resp.json())
             .then(json => {
-                resolve(json);
+                // Ensure the response has a url property
+                if (typeof json === 'string') {
+                    // If response is a string, assume it's a URL
+                    resolve({ url: json });
+                } else if (json && typeof json === 'object') {
+                    // If response has a URL field or similar, use it
+                    if (json.url) {
+                        resolve(json);
+                    } else if (json.data && json.data.url) {
+                        resolve(json);
+                    } else if (json.path) {
+                        resolve({ url: json.path });
+                    } else if (json.location) {
+                        resolve({ url: json.location });
+                    } else if (json.link) {
+                        resolve({ url: json.link });
+                    } else if (json.src) {
+                        resolve({ url: json.src });
+                    } else {
+                        // If no recognizable URL field is found, convert to string
+                        resolve({ url: JSON.stringify(json) });
+                    }
+                } else {
+                    // If response is something else, convert to string
+                    resolve({ url: String(json) });
+                }
             }).catch((error) => {
-            reject(error);
-        })
+                reject(error);
+            });
     });
 }

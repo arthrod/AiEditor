@@ -1,6 +1,6 @@
-import {AbstractMenuButton} from "./AbstractMenuButton.ts";
-import tippy, {Instance} from "tippy.js";
-import {Editor, EditorEvents} from "@tiptap/core";
+import { Editor, EditorEvents } from "@tiptap/core";
+import tippy, { Instance } from "tippy.js";
+import { AbstractMenuButton } from "./AbstractMenuButton.ts";
 
 export abstract class AbstractDropdownMenuButton<T> extends AbstractMenuButton {
     tippyInstance?: Instance;
@@ -37,14 +37,37 @@ export abstract class AbstractDropdownMenuButton<T> extends AbstractMenuButton {
         super.connectedCallback();
 
         this.textEl = this.querySelector("#text") as HTMLDivElement;
-        this.tippyInstance = tippy(this.querySelector("#tippy")!, {
+        
+        // Get tippy trigger element
+        const tippyTrigger = this.querySelector("#tippy")!;
+        
+        // Add keyboard accessibility attributes to the trigger
+        tippyTrigger.setAttribute('tabindex', '0');
+        tippyTrigger.setAttribute('role', 'button');
+        tippyTrigger.setAttribute('aria-haspopup', 'true');
+        
+        // Initialize tippy with accessibility improvements
+        this.tippyInstance = tippy(tippyTrigger, {
             content: this.createMenuElement(),
-            appendTo: this.closest(".aie-container")!,
+            // Fix for accessibility warning - use document.body instead of closest container
+            appendTo: document.body,
             placement: 'bottom',
             trigger: 'click',
             interactive: true,
             arrow: false,
-        })
+            // Improve keyboard accessibility
+            a11y: {
+                tabindex: '0'
+            }
+        });
+        
+        // Add keyboard event listener for accessibility
+        tippyTrigger.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                this.tippyInstance?.show();
+            }
+        });
     }
 
     createMenuElement() {

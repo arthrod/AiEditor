@@ -1,44 +1,44 @@
 import {
-    Editor as Tiptap,
+    ChainedCommands,
     EditorEvents,
     EditorOptions,
     Extensions,
     getTextBetween,
     SingleCommands,
-    ChainedCommands
+    Editor as Tiptap
 } from "@tiptap/core";
 
-import {Header} from "../components/Header.ts";
-import {Footer} from "../components/Footer.ts";
+import { Footer } from "../components/Footer.ts";
+import { Header } from "../components/Header.ts";
 
-import {getExtensions} from "./getExtensions.ts";
+import { getExtensions } from "./getExtensions.ts";
 
-import "../styles"
+import "../styles";
 // i18n
-import i18next from "i18next";
-import {zh} from "../i18n/zh.ts";
-import {en} from "../i18n/en.ts";
-import {de} from "../i18n/de.ts";
-import {pt} from "../i18n/pt.ts";
-import {es} from "../i18n/es.ts";
-import {hi} from "../i18n/hi.ts";
-import {id} from "../i18n/id.ts";
-import {ja} from "../i18n/ja.ts";
-import {ko} from "../i18n/ko.ts";
-import {th} from "../i18n/th.ts";
-import {vi} from "../i18n/vi.ts";
-import {Resource} from "i18next";
+import i18next, { Resource } from "i18next";
+import { de } from "../i18n/de.ts";
+import { en } from "../i18n/en.ts";
+import { es } from "../i18n/es.ts";
+import { hi } from "../i18n/hi.ts";
+import { id } from "../i18n/id.ts";
+import { ja } from "../i18n/ja.ts";
+import { ko } from "../i18n/ko.ts";
+import { pt } from "../i18n/pt.ts";
+import { th } from "../i18n/th.ts";
+import { vi } from "../i18n/vi.ts";
+import { zh } from "../i18n/zh.ts";
 
-import {DOMParser} from "@tiptap/pm/model";
-import {AiGlobalConfig} from "../ai/AiGlobalConfig.ts";
-import {AiModelManager} from "../ai/AiModelManager.ts";
-import {defineCustomElement} from "../commons/defineCustomElement.ts";
-import {BubbleMenuItem} from "../components/bubbles/types.ts";
-import {LanguageItem} from "../extensions/CodeBlockExt.ts";
-import {Transaction} from "@tiptap/pm/state";
-import {DefaultToolbarKey} from "../components/DefaultToolbarKeys.ts";
-import {htmlToMd, mdToHtml} from "../util/mdUtil.ts";
-import {organizeHTMLContent} from "../util/htmlUtil.ts";
+import { DOMParser } from "@tiptap/pm/model";
+import { Transaction } from "@tiptap/pm/state";
+import { AiGlobalConfig } from "../ai/AiGlobalConfig.ts";
+import { AiModelManager } from "../ai/AiModelManager.ts";
+import { defineCustomElement } from "../commons/defineCustomElement.ts";
+import { BubbleMenuItem } from "../components/bubbles/types.ts";
+import { DefaultToolbarKey } from "../components/DefaultToolbarKeys.ts";
+import { LanguageItem } from "../extensions/CodeBlockExt.ts";
+import { FileUploadExt } from "../extensions/FileUploadExt.ts";
+import { organizeHTMLContent } from "../util/htmlUtil.ts";
+import { htmlToMd, mdToHtml } from "../util/mdUtil.ts";
 
 defineCustomElement('aie-header', Header);
 defineCustomElement('aie-footer', Footer);
@@ -117,10 +117,21 @@ export type AiEditorOptions = {
     onSave?: (editor: AiEditor) => boolean,
     onFullscreen?: (isFullscreen: boolean) => void,
     toolbarKeys?: (string | CustomMenu | MenuGroup)[],
+    alwaysEnabledToolbarKeys?: string[],
     toolbarExcludeKeys?: DefaultToolbarKey[],
     toolbarSize?: 'small' | 'medium' | 'large',
     draggable?: boolean,
     htmlPasteConfig?: HtmlPasteConfig,
+    smartAutoCorrect?: {
+        enabled?: boolean,
+        capitalizeFirstLetter?: boolean,
+        fixCommonTypos?: boolean,
+        fixPunctuation?: boolean,
+        smartQuotes?: boolean,
+        useAI?: boolean,
+        aiDebounceTime?: number,
+        userDictionary?: Record<string, string>,
+    },
     codeBlock?: {
         languages?: LanguageItem[],
         codeExplainPrompt?: string,
@@ -169,6 +180,18 @@ export type AiEditorOptions = {
         uploadFormName?: string,
         uploader?: Uploader,
         uploaderEvent?: UploaderEvent,
+    },
+    fileUpload?: {
+        customMenuInvoke?: (editor: AiEditor) => void;
+        uploadUrl?: string,
+        uploadHeaders?: (() => Record<string, any>) | Record<string, any>,
+        uploadFormName?: string,
+        uploader?: Uploader,
+        uploaderEvent?: UploaderEvent,
+        extractContent?: boolean,
+        maxExtractSize?: number,
+        supportedFormats?: string[],
+        parseMode?: 'auto' | 'ask' | 'always' | 'never',
     },
     fontFamily?: {
         values: NameAndValue[]
@@ -242,6 +265,8 @@ export class AiEditor {
     options: AiEditorOptions;
 
     eventComponents: AiEditorEventListener[] = [];
+
+    private _hasShownStorageWarning: boolean = false;
 
     constructor(_: AiEditorOptions) {
         this.options = {...defaultOptions, ..._};
@@ -345,15 +370,34 @@ export class AiEditor {
                 },
             }
         })
+        
+        // Set the editor instance on the window object for global access
+        window.editorInstance = this.innerEditor;
     }
 
 
     protected getExtensions() {
         let extensions = getExtensions(this, this.options);
+
         if (this.options.onCreateBefore) {
             const newExtensions = this.options.onCreateBefore(this, extensions);
             if (newExtensions) extensions = newExtensions;
         }
+
+        // Add FileUploadExt to the extensions array
+        extensions.push(
+            FileUploadExt.configure({
+                uploadUrl: this.options.fileUpload?.uploadUrl,
+                uploadHeaders: this.options.fileUpload?.uploadHeaders,
+                uploader: this.options.fileUpload?.uploader || this.options.uploader,
+                uploaderEvent: this.options.fileUpload?.uploaderEvent,
+                uploadFormName: this.options.fileUpload?.uploadFormName,
+                extractContent: this.options.fileUpload?.extractContent,
+                maxExtractSize: this.options.fileUpload?.maxExtractSize,
+                supportedFormats: this.options.fileUpload?.supportedFormats,
+            })
+        );
+
         return extensions;
     }
 
@@ -374,8 +418,13 @@ export class AiEditor {
         const _footer = this.container.querySelector(".aie-container-footer") || this.container;
         _footer.appendChild(this.footer);
 
-        if (this.options.ai) {
-            AiModelManager.init(this.innerEditor, this.options.ai);
+        // Register AI models if configured
+        if (this.options.ai && typeof this.options.ai === 'object') {
+            try {
+                AiModelManager.registerModels(this.innerEditor, this.options.ai);
+            } catch (error) {
+                console.error('Error registering AI models:', error);
+            }
         }
 
         if (this.options.onCreated) {
@@ -401,10 +450,118 @@ export class AiEditor {
         if (transEvent.transaction.docChanged && this.options.contentRetention && this.options.contentRetentionKey) {
             const html = transEvent.editor.getHTML();
             if ("<p></p>" === html || "" === html) {
-                localStorage.removeItem(this.options.contentRetentionKey);
+                try {
+                    localStorage.removeItem(this.options.contentRetentionKey);
+                } catch (e) {
+                    console.warn("Failed to remove item from localStorage:", e);
+                }
             } else {
                 const json = transEvent.editor.getJSON();
-                localStorage.setItem(this.options.contentRetentionKey, JSON.stringify(json))
+                try {
+                    // Try to save the content to localStorage
+                    const jsonString = JSON.stringify(json);
+                    
+                    // Check if content is likely to exceed quota (over 4MB to leave some buffer)
+                    if (jsonString.length > 4 * 1024 * 1024) {
+                        console.warn("Content too large for localStorage, consider using 'Save to File' feature");
+                        
+                        // We'll mark that we've warned the user
+                        if (!this._hasShownStorageWarning) {
+                            this._hasShownStorageWarning = true;
+                            
+                            // Show the dialog only once per session
+                            setTimeout(() => {
+                                this.offerFileDownload().catch(err => {
+                                    console.error("Error offering file download:", err);
+                                });
+                            }, 1000);
+                        }
+                        
+                        // Still try to store a simplified version
+                        const simplifiedJson = { ...json };
+                        // Remove any large content like base64 images
+                        const pruneNodes = (node) => {
+                            if (!node || !node.content) return node;
+                            
+                            // Process node content
+                            if (Array.isArray(node.content)) {
+                                node.content = node.content.map(child => {
+                                    // Remove image data or other large attributes
+                                    if (child.type === 'image' && child.attrs && child.attrs.src) {
+                                        // If it's a base64 image, replace with a placeholder
+                                        if (child.attrs.src.startsWith('data:')) {
+                                            child.attrs.src = '[Image data too large to store]';
+                                        }
+                                    }
+                                    return pruneNodes(child);
+                                });
+                            }
+                            return node;
+                        };
+                        
+                        const prunedJson = pruneNodes(simplifiedJson);
+                        localStorage.setItem(this.options.contentRetentionKey, JSON.stringify(prunedJson));
+                        return; // Skip the regular localStorage attempt
+                    }
+                    
+                    // Standard case - try to save to localStorage
+                    localStorage.setItem(this.options.contentRetentionKey, jsonString);
+                } catch (error) {
+                    console.warn("LocalStorage quota exceeded. Content too large to save automatically.", error);
+                    
+                    // Show save dialog only once per session
+                    if (!this._hasShownStorageWarning) {
+                        this._hasShownStorageWarning = true;
+                        setTimeout(() => {
+                            this.offerFileDownload().catch(err => {
+                                console.error("Error offering file download:", err);
+                            });
+                        }, 1000);
+                    }
+                    
+                    // Handle the error gracefully
+                    if (error.name === 'QuotaExceededError') {
+                        // Try to save a truncated version or just the essential parts
+                        try {
+                            // Option 1: Save just the document structure without images
+                            const simplifiedJson = { ...json };
+                            // Remove any large content like base64 images
+                            const pruneNodes = (node) => {
+                                if (!node || !node.content) return node;
+                                
+                                // Process node content
+                                if (Array.isArray(node.content)) {
+                                    node.content = node.content.map(child => {
+                                        // Remove image data or other large attributes
+                                        if (child.type === 'image' && child.attrs && child.attrs.src) {
+                                            // If it's a base64 image, replace with a placeholder
+                                            if (child.attrs.src.startsWith('data:')) {
+                                                child.attrs.src = '[Image data too large to store]';
+                                            }
+                                        }
+                                        return pruneNodes(child);
+                                    });
+                                }
+                                return node;
+                            };
+                            
+                            const prunedJson = pruneNodes(simplifiedJson);
+                            localStorage.setItem(this.options.contentRetentionKey, JSON.stringify(prunedJson));
+                            console.log("Saved simplified version without large embedded content");
+                        } catch (fallbackError) {
+                            // If even the simplified version is too large
+                            console.error("Unable to save document state - content too large for localStorage", fallbackError);
+                            
+                            // Remove the key to free up space for future saves of smaller content
+                            try {
+                                localStorage.removeItem(this.options.contentRetentionKey);
+                            } catch (e) {
+                                // At this point, we've tried everything we can
+                                console.error("Failed to manage localStorage:", e);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -606,5 +763,107 @@ export class AiEditor {
 
     isDestroyed() {
         return this.innerEditor.isDestroyed;
+    }
+
+    saveToFile(filename = 'document.json') {
+        try {
+            const content = this.getJson();
+            const blob = new Blob([JSON.stringify(content)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            // Create a download link and trigger it
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            return true;
+        } catch (error) {
+            console.error("Error saving document to file:", error);
+            return false;
+        }
+    }
+    
+    loadFromFile() {
+        return new Promise((resolve, reject) => {
+            try {
+                // Create a file input element
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                
+                input.onchange = (event) => {
+                    const file = (event.target as HTMLInputElement).files?.[0];
+                    if (!file) {
+                        reject(new Error("No file selected"));
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        try {
+                            const content = JSON.parse(reader.result as string);
+                            this.innerEditor.commands.setContent(content);
+                            resolve(true);
+                        } catch (parseError) {
+                            console.error("Error parsing document file:", parseError);
+                            reject(parseError);
+                        }
+                    };
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsText(file);
+                };
+                
+                // Trigger the file selection dialog
+                input.click();
+            } catch (error) {
+                console.error("Error loading document from file:", error);
+                reject(error);
+            }
+        });
+    }
+    
+    // Method to offer saving to file when content is too large for localStorage
+    offerFileDownload() {
+        // Create a modal or dialog to inform the user
+        const dialog = document.createElement('div');
+        dialog.className = 'aie-file-save-dialog';
+        dialog.innerHTML = `
+            <div class="aie-file-save-dialog-content">
+                <h3>Document Too Large for Auto-Save</h3>
+                <p>Your document contains large content (like images) that exceeds the browser's storage limit.</p>
+                <p>Would you like to save your work to a file instead?</p>
+                <div class="aie-file-save-dialog-buttons">
+                    <button class="aie-btn aie-btn-secondary aie-dialog-cancel">Cancel</button>
+                    <button class="aie-btn aie-btn-primary aie-dialog-save">Save to File</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // Add event listeners
+        const cancelBtn = dialog.querySelector('.aie-dialog-cancel');
+        const saveBtn = dialog.querySelector('.aie-dialog-save');
+        
+        return new Promise<boolean>((resolve) => {
+            cancelBtn?.addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                resolve(false);
+            });
+            
+            saveBtn?.addEventListener('click', () => {
+                document.body.removeChild(dialog);
+                const saved = this.saveToFile();
+                resolve(saved);
+            });
+        });
     }
 }

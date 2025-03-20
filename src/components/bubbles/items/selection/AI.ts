@@ -1,13 +1,13 @@
-import {AIBubbleMenuItem, BubbleMenuItem} from "../../types.ts";
-import {t} from "i18next";
-import {InnerEditor} from "../../../../core/AiEditor.ts";
-import {AiModelManager} from "../../../../ai/AiModelManager.ts";
-import {Svgs} from "../../../../commons/Svgs.ts";
-import {AiClient} from "../../../../ai/core/AiClient.ts";
-import tippy, {Instance} from "tippy.js";
-import {SmoothAppender} from "../../../../util/SmoothAppender.ts";
-import {getAIBoundingClientRect} from "../../../../util/getAIBoundingClientRect.ts";
 import { TextSelection } from "@tiptap/pm/state";
+import { t } from "i18next";
+import tippy, { Instance } from "tippy.js";
+import { AiModelManager } from "../../../../ai/AiModelManager.ts";
+import { AiClient } from "../../../../ai/core/AiClient.ts";
+import { Svgs } from "../../../../commons/Svgs.ts";
+import { InnerEditor } from "../../../../core/AiEditor.ts";
+import { SmoothAppender } from "../../../../util/SmoothAppender.ts";
+import { getAIBoundingClientRect } from "../../../../util/getAIBoundingClientRect.ts";
+import { AIBubbleMenuItem, BubbleMenuItem } from "../../types.ts";
 
 
 type Holder = {
@@ -17,6 +17,40 @@ type Holder = {
     aiClient?: AiClient
 }
 
+// Available AI providers
+const aiProviders = [
+    { id: "openrouter", name: "OpenRouter" },
+    { id: "spark", name: "Spark" },
+    { id: "openai", name: "OpenAI" }
+];
+
+// Function to get active provider display name
+const getActiveProviderName = (editor: InnerEditor) => {
+    const currentModelProvider = editor?.aiEditor?.options?.ai?.bubblePanelModel || "auto";
+    
+    if (currentModelProvider === "auto") {
+        return "Auto";
+    }
+    
+    const provider = aiProviders.find(p => p.id === currentModelProvider);
+    return provider ? provider.name : currentModelProvider.charAt(0).toUpperCase() + currentModelProvider.slice(1);
+};
+
+// Function to get model name if available
+const getModelName = (editor: InnerEditor) => {
+    const currentModelProvider = editor?.aiEditor?.options?.ai?.bubblePanelModel || "auto";
+    
+    if (currentModelProvider === "openrouter") {
+        const openrouterConfig = editor?.aiEditor?.options?.ai?.models?.openrouter;
+        if (openrouterConfig && typeof openrouterConfig === 'object' && 'model' in openrouterConfig) {
+            const model = openrouterConfig.model as string;
+            const modelParts = model.split('/');
+            return modelParts[modelParts.length - 1].toUpperCase();
+        }
+    }
+    
+    return null;
+};
 
 export const defaultAiPanelMenus = [
     {
@@ -41,7 +75,7 @@ export const defaultAiPanelMenus = [
     },
     '<hr/>',
     {
-        prompt: `<content>{content}</content>\n请帮我翻译以上内容，在翻译之前，想先判断一下这个内容是不是中文，如果是中文，则翻译问英文，如果是其他语言，则需要翻译为中文，注意，你只需要返回翻译的结果，不需要对此进行任何解释，不需要除了翻译结果以外的其他任何内容。`,
+        prompt: `<content>{content}</content>\n请帮我翻译以上内容，在翻译之前，想先判断一下这个内容是不是中文，如果是中文，则翻译为英文，如果是其他语言，则需要翻译为中文，注意，你只需要返回翻译的结果，不需要对此进行任何解释，不需要除了翻译结果以外的其他任何内容。`,
         icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 15V17C5 18.0544 5.81588 18.9182 6.85074 18.9945L7 19H10V21H7C4.79086 21 3 19.2091 3 17V15H5ZM18 10L22.4 21H20.245L19.044 18H14.954L13.755 21H11.601L16 10H18ZM17 12.8852L15.753 16H18.245L17 12.8852ZM8 2V4H12V11H8V14H6V11H2V4H6V2H8ZM17 3C19.2091 3 21 4.79086 21 7V9H19V7C19 5.89543 18.1046 5 17 5H14V3H17ZM6 6H4V9H6V6ZM10 6H8V9H10V6Z"></path></svg>`,
         title: 'translate',
     },
@@ -93,7 +127,14 @@ const startChat = (holder: Holder, container: HTMLDivElement, prompt: string) =>
 const createAiPanelElement = (holder: Holder, aiBubbleMenuItems: AIBubbleMenuItem[]) => {
     const container = document.createElement("div");
     container.classList.add("aie-ai-panel")
+
+    // Create provider selector
+    const providerSelectorHtml = createProviderSelectorHtml(holder);
+    
     container.innerHTML = `
+        <div class="aie-ai-panel-header">
+            ${providerSelectorHtml}
+        </div>
         <div class="aie-ai-panel-body">
             <div class="aie-ai-panel-body-content" style="display: none"><div class="loader">${Svgs.refresh}</div><textarea readonly></textarea></div>
             <div class="aie-ai-panel-body-input"><input id="prompt" placeholder="${t('placeholder-tell-ai-what-to-do-next')}" type="text" />
@@ -121,6 +162,11 @@ const createAiPanelElement = (holder: Holder, aiBubbleMenuItems: AIBubbleMenuIte
     }).join('')}
         </div>
         `;
+
+    // Setup event handlers for provider selection
+    setTimeout(() => {
+        setupProviderSelectionHandlers(container, holder);
+    }, 0);
 
     container.querySelector("#replace")!.addEventListener("click", () => {
         const textarea = container.querySelector("textarea")!;
@@ -176,6 +222,151 @@ const createAiPanelElement = (holder: Holder, aiBubbleMenuItems: AIBubbleMenuIte
     return container;
 }
 
+// Function to create provider selector HTML
+const createProviderSelectorHtml = (holder: Holder) => {
+    if (!holder.editor) return '';
+    
+    const activeProvider = holder.editor.aiEditor.options.ai?.bubblePanelModel || 'auto';
+    const providerName = getActiveProviderName(holder.editor);
+    const modelName = getModelName(holder.editor);
+    
+    const aiIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M12.395 4.91992L17.875 8.66602C18.505 9.07302 18.875 9.80602 18.875 10.58V17.418C18.875 18.193 18.505 18.928 17.875 19.335L12.395 23.081C11.755 23.497 10.935 23.497 10.295 23.081L4.81498 19.335C4.18498 18.928 3.81498 18.193 3.81498 17.418V10.58C3.81498 9.80602 4.18498 9.07202 4.81498 8.66602L10.295 4.91992C10.935 4.50392 11.755 4.50392 12.395 4.91992Z" fill="none" stroke="currentColor" stroke-width="1"></path>
+        <path d="M12 8.10938V19.5" stroke="currentColor" stroke-width="1.125" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path d="M16.5 15.7952L7.5 12.2952" stroke="currentColor" stroke-width="1.125" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path d="M16.5 10.7048L7.5 14.2048" stroke="currentColor" stroke-width="1.125" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>`;
+    
+    return `
+    <div class="aie-ai-provider-selector">
+        <div class="aie-ai-provider-current">
+            <div class="aie-ai-provider-icon">${aiIcon}</div>
+            <div class="aie-ai-provider-name">
+                ${providerName}
+                ${modelName ? `<span class="aie-ai-model-name">(${modelName})</span>` : ''}
+            </div>
+            <div class="aie-ai-provider-arrow">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"></path><path d="M12 14L8 10H16L12 14Z"></path></svg>
+            </div>
+        </div>
+        <div class="aie-ai-provider-dropdown">
+            ${aiProviders.map(provider => `
+                <div class="aie-ai-provider-option ${provider.id === activeProvider ? 'active' : ''}" data-provider="${provider.id}">
+                    ${provider.name}
+                </div>
+            `).join('')}
+            <div class="aie-ai-provider-option ${activeProvider === 'auto' ? 'active' : ''}" data-provider="auto">
+                Auto
+            </div>
+        </div>
+    </div>
+    <style>
+        .aie-ai-panel-header {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .aie-ai-provider-selector {
+            position: relative;
+            cursor: pointer;
+        }
+        .aie-ai-provider-current {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        .aie-ai-provider-name {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .aie-ai-model-name {
+            font-size: 11px;
+            color: #666;
+        }
+        .aie-ai-provider-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+        }
+        .aie-ai-provider-option {
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .aie-ai-provider-option:hover {
+            background: #f5f5f5;
+        }
+        .aie-ai-provider-option.active {
+            background: #e9f5ff;
+            font-weight: 500;
+        }
+    </style>
+    `;
+};
+
+// Setup event handlers for provider selection
+const setupProviderSelectionHandlers = (container: HTMLDivElement, holder: Holder) => {
+    const selector = container.querySelector('.aie-ai-provider-selector');
+    const dropdown = container.querySelector('.aie-ai-provider-dropdown') as HTMLElement | null;
+    
+    if (!selector || !dropdown) return;
+
+    // Toggle dropdown
+    selector.addEventListener('click', (e) => {
+        const isOpen = dropdown.style.display === 'block';
+        dropdown.style.display = isOpen ? 'none' : 'block';
+        e.stopPropagation();
+    });
+
+    // Handle provider selection
+    container.querySelectorAll('.aie-ai-provider-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+            const providerId = (option as HTMLElement).dataset.provider;
+            if (providerId && holder.editor) {
+                // Update the bubblePanelModel in the editor options
+                if (holder.editor.aiEditor.options.ai) {
+                    holder.editor.aiEditor.options.ai.bubblePanelModel = providerId;
+                }
+                
+                // Update the current display
+                const currentEl = container.querySelector('.aie-ai-provider-current');
+                if (currentEl) {
+                    const nameEl = currentEl.querySelector('.aie-ai-provider-name');
+                    if (nameEl) {
+                        const providerName = providerId === 'auto' ? 'Auto' : 
+                            aiProviders.find(p => p.id === providerId)?.name || 
+                            providerId.charAt(0).toUpperCase() + providerId.slice(1);
+                        
+                        nameEl.innerHTML = providerName;
+                    }
+                }
+                
+                // Update active class
+                container.querySelectorAll('.aie-ai-provider-option').forEach(opt => {
+                    opt.classList.toggle('active', (opt as HTMLElement).dataset.provider === providerId);
+                });
+                
+                // Hide dropdown
+                dropdown.style.display = 'none';
+            }
+            e.stopPropagation();
+        });
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+        if (dropdown) dropdown.style.display = 'none';
+    });
+};
 
 export const AI = {
     id: "ai",

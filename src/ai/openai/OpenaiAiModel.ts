@@ -1,10 +1,10 @@
-import {AiClient} from "../core/AiClient.ts";
-import {AiMessageListener} from "../core/AiMessageListener.ts";
-import {AiModel} from "../core/AiModel.ts";
-import {AiGlobalConfig} from "../AiGlobalConfig.ts";
-import {OpenaiModelConfig} from "./OpenaiModelConfig.ts";
-import {SseClient} from "../core/client/sse/SseClient.ts";
-import {InnerEditor} from "../../core/AiEditor.ts";
+import { InnerEditor } from "../../core/AiEditor.ts";
+import { AiGlobalConfig } from "../AiGlobalConfig.ts";
+import { AiClient } from "../core/AiClient.ts";
+import { AiMessageListener } from "../core/AiMessageListener.ts";
+import { AiModel } from "../core/AiModel.ts";
+import { SseClient } from "../core/client/sse/SseClient.ts";
+import { OpenaiModelConfig } from "./OpenaiModelConfig.ts";
 
 
 export class OpenaiAiModel extends AiModel {
@@ -16,6 +16,11 @@ export class OpenaiAiModel extends AiModel {
             // model: "gpt-3.5-turbo",
             ...globalConfig.models["openai"]
         } as OpenaiModelConfig;
+        
+        // If modelId is specified, use it to override the model field for consistency
+        if (this.aiModelConfig.modelId) {
+            this.aiModelConfig.model = this.aiModelConfig.modelId;
+        }
     }
 
     createAiClient(url: string, listener: AiMessageListener): AiClient {
@@ -63,7 +68,6 @@ export class OpenaiAiModel extends AiModel {
     wrapPayload(prompt: string) {
         const config = this.aiModelConfig as OpenaiModelConfig;
         const payload = {
-            // "model": config.model,
             "messages": [
                 {
                     "role": "user",
@@ -75,8 +79,10 @@ export class OpenaiAiModel extends AiModel {
             "stream": true
         } as any
 
-        if (config.model) {
-            payload.model = config.model;
+        // Use modelId if available, otherwise fall back to model field
+        const modelToUse = config.modelId || config.model;
+        if (modelToUse) {
+            payload.model = modelToUse;
         }
 
         return JSON.stringify(payload);

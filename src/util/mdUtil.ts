@@ -56,7 +56,7 @@ turndownService.use(tables);
 
 turndownService.addRule('strikethrough', {
     filter: ['del', 's', 'strike'],
-    replacement: function (content:any) {
+    replacement: function (content: any) {
         return '~~' + content + '~~'
     }
 })
@@ -109,7 +109,8 @@ export const mdToHtml = (markdown: string) => {
     if (!markdown) return markdown;
     const renderHtml = md.render(markdown).trim();
     if (!renderHtml) return markdown;
-    return organizeHTMLContent(renderHtml);
+    // 如果包含代码块，保留代码块中的换行符
+    return organizeHTMLContent(renderHtml.includes("<pre") ? renderHtml : renderHtml.replace(/\n/g, ''));
 }
 
 export const htmlToMd = (html: string) => {
@@ -120,17 +121,24 @@ export const htmlToMd = (html: string) => {
     const colGroupList = doc.querySelectorAll("colgroup");
     colGroupList.forEach(colgroup => colgroup.remove())
 
-    // fix task list to markdown
+
     const lis = doc.querySelectorAll("li");
     lis.forEach(li => {
         const div = li.querySelector("div");
-        if (div && div.firstElementChild) {
-            const fragment = document.createDocumentFragment();
-            fragment.append(" ")
-            div.firstElementChild.childNodes.forEach(node => {
-                fragment.append(node.cloneNode(true))
-            })
-            div.replaceWith(fragment)
+        if (div) {
+            const image = div.querySelector("img");
+            if (image) {
+                //ignore
+            }
+            // fix task list to markdown
+            else if (div.firstElementChild) {
+                const fragment = document.createDocumentFragment();
+                fragment.append(" ")
+                div.firstElementChild.childNodes.forEach(node => {
+                    fragment.append(node.cloneNode(true))
+                })
+                div.replaceWith(fragment)
+            }
         }
     })
     const innerHTML = doc.body.innerHTML;

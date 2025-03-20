@@ -1,4 +1,4 @@
-import {Decoration} from "prosemirror-view";
+import { Decoration } from "prosemirror-view";
 
 export const createMediaDecoration = (action: { pos: number, id: string }) => {
     const placeholder = document.createElement("div");

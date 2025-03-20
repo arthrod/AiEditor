@@ -262,3 +262,9 @@ Unlimited amount of applications
 </div>
 </div>
 
+## Features
+
+- [Getting Started](./getting-started.md)
+- [Local Document Storage](./local-documents.md)
+- [More features...](#)
+
