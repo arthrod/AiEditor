@@ -117,6 +117,7 @@ export type AiEditorOptions = {
     onSave?: (editor: AiEditor) => boolean,
     onFullscreen?: (isFullscreen: boolean) => void,
     toolbarKeys?: (string | CustomMenu | MenuGroup)[],
+    alwaysEnabledToolbarKeys?: string[],
     toolbarExcludeKeys?: DefaultToolbarKey[],
     toolbarSize?: 'small' | 'medium' | 'large',
     draggable?: boolean,
@@ -545,6 +546,9 @@ export class AiEditor {
     }
 
     setContent(content: string) {
+        if (typeof content === 'string') {
+          content = organizeHTMLContent(content);
+        }
         this.focus().clear().insert(content);
         return this;
     }

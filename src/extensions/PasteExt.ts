@@ -3,7 +3,15 @@ import {Extension} from "@tiptap/core";
 import {PluginKey} from "@tiptap/pm/state";
 import {InnerEditor} from "../core/AiEditor.ts";
 import {Slice} from '@tiptap/pm/model';
-import {cleanHtml, clearDataMpSlice, isExcelDocument, removeEmptyParagraphs, removeHtmlTags} from "../util/htmlUtil.ts";
+import {
+    cleanFirstParagraph,
+    cleanHtml,
+    cleanTableWhitespace,
+    clearDataPmSlice,
+    isExcelDocument,
+    removeEmptyParagraphs,
+    removeHtmlTags
+} from "../util/htmlUtil.ts";
 
 export const PasteExt = Extension.create({
     name: 'pasteExt',
@@ -20,9 +28,19 @@ export const PasteExt = Extension.create({
                         }
 
                         if (!event.clipboardData) return false;
-                        const text = event.clipboardData.getData('text/plain');
+                        let text = event.clipboardData.getData('text/plain');
                         let html = event.clipboardData.getData('text/html');
+
                         if (!html && text) {
+
+                            //判断当前是不是代码块获得焦点，如果是代码块，则将粘贴的文本插入到代码块中，不对粘贴的内容进行处理
+                            if (this.editor.isActive('codeBlock') || this.editor.isActive('code')) {
+                                const {state: {tr}, dispatch} = view;
+                                dispatch(tr.replaceSelectionWith(this.editor.schema.text(text)).scrollIntoView());
+                                return true;
+                            }
+
+                            text = text.replace(/\n/g, '<br>')
                             const parseMarkdown = (this.editor as InnerEditor).parseMarkdown(text);
                             if (parseMarkdown) {
                                 const {state: {tr}, dispatch} = view;
@@ -30,12 +48,14 @@ export const PasteExt = Extension.create({
                                 return true;
                             }
                         } else if (html) {
-                            html = clearDataMpSlice(html);
+                            html = clearDataPmSlice(html);
                             const {options} = (this.editor as InnerEditor).aiEditor;
                             if (options.htmlPasteConfig) {
                                 //pasteAsText
                                 if (options.htmlPasteConfig.pasteAsText) {
                                     html = cleanHtml(html, ['p', 'br'], true)
+                                    // 调用这个方法，防止粘贴后，自动换行的问题
+                                    html = cleanFirstParagraph(html)
                                 }
                                 //pasteClean
                                 else if (options.htmlPasteConfig.pasteClean) {
@@ -72,11 +92,8 @@ export const PasteExt = Extension.create({
                                 const document = parser.parseFromString(html, 'text/html');
                                 const table = document.querySelector("table");
                                 if (table && isExcelDocument(document)) {
-                                    this.editor.commands.insertContent(table!.outerHTML, {
-                                        parseOptions: {
-                                            preserveWhitespace: false,
-                                        }
-                                    });
+                                    const outerHTML = cleanTableWhitespace(table!.outerHTML);
+                                    this.editor.commands.insertContent(outerHTML);
                                     return true
                                 }
                             }

@@ -14,8 +14,8 @@ import {IndentExt} from "../extensions/IndentExt.ts";
 import {ImageExt} from "../extensions/ImageExt.ts";
 import {Table} from "@tiptap/extension-table";
 import {TableRow} from "@tiptap/extension-table-row";
-import {TableHeader} from "@tiptap/extension-table-header";
-import {TableCell} from "@tiptap/extension-table-cell";
+import {TableHeaderExt} from "../extensions/TableHeaderExt";
+import {TableCellExt} from "../extensions/TableCellExt";
 import {CharacterCount} from "@tiptap/extension-character-count";
 import {Link} from "@tiptap/extension-link";
 import {Superscript} from "@tiptap/extension-superscript";
@@ -83,8 +83,8 @@ export const getExtensions = (editor: AiEditor, options: AiEditorOptions): Exten
                 allowTableNodeSelection: true,
             }),
             TableRow,
-            TableHeader,
-            TableCell,
+            TableCellExt,
+            TableHeaderExt,
             CharacterCount.configure({
                 textCounter: typeof options?.textCounter === "function"
                     ? options.textCounter : (text) => text.length
@@ -114,7 +114,7 @@ export const getExtensions = (editor: AiEditor, options: AiEditorOptions): Exten
                 },
                 codeCommentsAi: options.ai?.codeBlock?.codeComments || {
                     model: "auto",
-                    prompt: options.codeBlock?.codeCommentsPrompt || "帮我对这个代码添加一些注释，并返回添加注释的代码，只返回代码",
+                    prompt: options.codeBlock?.codeCommentsPrompt || "帮我对这个代码添加代码注释，并返回添加注释的代码，注意只需要返回代码。",
                 },
             }),
             VideoExt.configure({
@@ -146,16 +146,16 @@ export const getExtensions = (editor: AiEditor, options: AiEditorOptions): Exten
         }))
     }
 
-    // if (options.ai?.command){
-    ret.push(AiCommandExt.configure({
-        suggestion: {
-            items: (_) => {
-                const commands = options.ai?.commands || defaultCommands;
-                return commands as any;
+    if (options.ai?.commandsEnable !== false) {
+        ret.push(AiCommandExt.configure({
+            suggestion: {
+                items: (_) => {
+                    const commands = options.ai?.commands || defaultCommands;
+                    return commands as any;
+                }
             }
-        }
-    }))
-    // }
+        }))
+    }
 
     if (options.onMentionQuery) {
         ret.push(createMention(options.onMentionQuery))

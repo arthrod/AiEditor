@@ -1,6 +1,112 @@
 # AiEditor ChangeLog
 
 
+## v1.4.0 20250625:
+- feat: Added video attributes autoplay, loop, muted, preload
+- feat: Upgraded related dependencies to the latest version
+- fix: Fixed the issue that the video does not display in read-only mode
+- fix: Fixed the issue that the video attributes poster and controls do not take effect
+- fix: In the code block, the issue that the pasted code does not display
+- fix: fixed when pasting images in a table, the table is lost when data is backfilled
+
+---
+- 新增：新增视频属性 autoplay, loop, muted, preload
+- 优化：升级相关依赖到最新版本
+- 修复：修复只读模式下，视频不显示的问题
+- 修复：修复视频属性 poster、controls 不生效问题
+- 修复：在代码块中，粘贴代码不显示的问题
+- 修复：在 table 内粘贴图片时，当数据回填的时候 table 丢失的问题
+
+
+
+## v1.3.9 20250603:
+- fix: fixed paste in new line if pasteAsText options enable 
+- fix: fix: fixed Uncaught RangeError: Invalid content for node tableCell: `<>` 
+- fix: Fix the problem that `p>img` is lost when pasting source code without HTML processing
+- fix: Fix the problem that `p>img` is lost when setContent is not processed with HTML
+- fix: Pasting in a new line in some cases
+- docs: Modify the level of pasteAsText in the basic configuration sample code. There is no pasteAsText under the AiEditorOptions type
+
+---
+- 修复: 修复源代码粘贴没有进行 html 处理导致 `p>img` 丢失问题 
+- 修复: 修复 setContent 没有进行 html 处理导致 `p>img` 丢失等问题 
+- 修复: 粘贴表格出现 RangeError: Invalid content for node tableCell: `<>` 错误的问题
+- 修复：粘贴时在某些情况下会粘贴在新行的问题
+- 文档: 修改基础配置 示例代码中的 pasteAsText 的层级。AiEditorOptions 类型下没有 pasteAsText
+
+
+
+## v1.3.8 20250422:
+- fix: rollback BubbleMenuPlugin plugin to prevent floating menu errors
+- refactor: optimize the indentation display when pasting word
+---
+- 修复: 回退 BubbleMenuPlugin 插件，防止浮动菜单错误
+- 优化: 优化 word 粘贴时的缩进显示
+
+
+
+## v1.3.7 20250422:
+- feat: Added the ability to support background and color configuration in tables, thanks @maonianyou
+- feat: Added support for AI configuration of commandsEnable
+- refactor: Optimized the configuration and automatic prompts for large models
+- refactor: Optimized the problem that pop-up prompts disappear automatically when the mouse moves out of the editor
+- refactor: clearDataPmSlice supports pasting code blocks
+- refactor: Optimized the code logic of pasting
+- refactor: When the table is too long, select the bottom cell of the table, and the table operation pop-up box is above the table header, which will appear hidden and invisible
+- refactor: When pasting an image, there will be a blank row above the image, and the mouse will automatically focus on the row
+- refactor: When switching between title and text on the mobile phone, the menu automatically hides
+
+---
+- 新增：表格添加支持 background 和 color 配置的能力，感谢 @maonianyou
+- 新增：添加 commandsEnable 的 AI 配置的支持
+- 优化：优化对大模型的配置和自动提示
+- 优化：优化弹出提示在鼠标移出编辑器时自动消失的问题
+- 优化：clearDataPmSlice 支持粘贴代码块
+- 优化：优化粘贴的代码逻辑
+- 优化：表格过长的情况下，选中表格最下方单元格，表格操作弹框在表头上方，会出现隐藏看不见的情况
+- 优化：粘贴图片时，图片上方会有一个空白的行，且鼠标自动聚焦到该行的问题
+- 优化：在手机端切换标题和文本时，菜单自动隐藏的问题
+
+
+
+## v1.3.6 20250312:
+- feat: Added alwaysEnabledToolbarKeys configuration to specify that certain buttons are always enabled
+- feat: Optimized the AI command menu to make its code more concise
+- feat: aie-undo duplicate definition problem
+- fix: When selecting an existing image in the editor first and then inserting another image, the "Applying a mismatched transaction" error appears
+- fix: Fixed some typos in AI prompt words that may cause AI to misunderstand
+- fix: Image configuration defaultSize does not work
+- fix: Code block does not wrap after AI automatically comments
+
+---
+- 新增：添加 alwaysEnabledToolbarKeys 配置，用于指定某些按钮永远处于不被禁用
+- 优化：优化 AI 命令菜单，使其代码更加简洁
+- 优化：aie-undo 重复定义的问题
+- 修复：当先选择编辑器里已存在的图片，再插入一张图片时，出现 "Applying a mismatched transaction" 错误
+- 修复：修复 AI 提示词的一些错别字，可能导致 AI 理解错误的问题
+- 修复：图片配置 defaultSize 不起作用的问题
+- 修复：代码块通过 AI 自动注释之后代码不换行问题修改
+
+
+
+## v1.3.5 20250212:
+- feat: Optimize the experience and cancel the pop-up of the floating menu in the code block
+- feat: Optimize the tools and methods such as organizeHTMLContent
+- feat: In read-only mode, do not disable the "Print" and "Full Screen" buttons
+- fix: taskList cannot be converted to markdown, and taskList of markdown cannot be converted to html
+- fix: The problem that the strikethrough in html cannot be converted to `~~`
+- fix: Fix the problem that removeEmptyParagraphs accidentally deletes images in some cases
+
+---
+- 优化: 优化体验，取消浮动菜单在代码块的弹出
+- 优化：优化 organizeHTMLContent 等工具方法
+- 优化：在只读模式下，不禁用 “打印” 和 “全屏” 按钮
+- 修复：taskList 无法转换为 markdown，markdown 的 taskList 也无法转换为 html 的问题
+- 修复：html 中的删除线无法转换为 `~~` 的问题
+- 修复：修复 removeEmptyParagraphs 在某些情况下误删图片的情况
+
+
+
 ## v1.3.4 20250102:
 - feat: Added custom color and color selection functions to the highlight block
 - feat: htmlUtil added createElement method

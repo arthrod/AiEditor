@@ -87,16 +87,46 @@ window.aiEditor = new AiEditor({
     // },
     ai: {
         models: {
-            // spark: {
-            //     ...config
-            // },
-            // openai: {
-            //     ...openai
-            // },
-            // gitee:{
-            //     endpoint:"https://ai.gitee.com/api/inference/serverless/KGHCVOPBV7GY/chat/completions",
-            //     apiKey:"***",
-            // }
+            custom: {
+                url: "https://ai.gitee.com/v1/chat/completions",
+                headers:{},
+                // headers: () => {
+                //     debugger
+                //     return {
+                //         Authorization: "Bearer xxxx",
+                //         'Content-Type': "application/json",
+                //         'X-Failover-Enabled': true,
+                //     }
+                // },
+                wrapPayload: (message: string) => {
+                    const messageObj = {
+                        model: "QwQ-32B",
+                        max_tokens: 2048,
+                        temperature: 0.7,
+                        top_p: 0.8,
+                        top_k: 50,
+                        stream: true,
+                        messages: [
+                            {
+                                role: "user",
+                                content: message,
+                            }
+                        ]
+                    }
+
+                    return JSON.stringify(messageObj)
+                },
+                parseMessage: (message: string) => {
+                    const messageObject = JSON.parse(message);
+                    return {
+                        role: "assistant",
+                        content: messageObject.choices[0].delta?.content || "",
+                        // index: number,
+                        // //0 代表首个文本结果；1 代表中间文本结果；2 代表最后一个文本结果。
+                        // status: 0|1|2,
+                    }
+                },
+            }
         },
         // bubblePanelEnable:false,
         // bubblePanelModel: "spark",
@@ -116,7 +146,7 @@ window.aiEditor = new AiEditor({
         //     },
         //     '<hr/>',
         //     {
-        //         prompt: `<content>{content}</content>\n请帮我翻译以上内容，在翻译之前，想先判断一下这个内容是不是中文，如果是中文，则翻译问英文，如果是其他语言，则需要翻译为中文，注意，你只需要返回翻译的结果，不需要对此进行任何解释，不需要除了翻译结果以外的其他任何内容。`,
+        //         prompt: `<content>{content}</content>\n请帮我翻译以上内容，在翻译之前，想先判断一下这个内容是不是中文，如果是中文，则翻译为英文，如果是其他语言，则需要翻译为中文，注意，你只需要返回翻译的结果，不需要对此进行任何解释，不需要除了翻译结果以外的其他任何内容。`,
         //         icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 15V17C5 18.0544 5.81588 18.9182 6.85074 18.9945L7 19H10V21H7C4.79086 21 3 19.2091 3 17V15H5ZM18 10L22.4 21H20.245L19.044 18H14.954L13.755 21H11.601L16 10H18ZM17 12.8852L15.753 16H18.245L17 12.8852ZM8 2V4H12V11H8V14H6V11H2V4H6V2H8ZM17 3C19.2091 3 21 4.79086 21 7V9H19V7C19 5.89543 18.1046 5 17 5H14V3H17ZM6 6H4V9H6V6ZM10 6H8V9H10V6Z"></path></svg>`,
         //         title: 'translate',
         //     },
